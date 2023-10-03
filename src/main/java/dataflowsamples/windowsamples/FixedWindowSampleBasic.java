@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 
-public class WindowExampleOld {
+public class FixedWindowSampleBasic {
 
     public static void main(String[] args) {
 
