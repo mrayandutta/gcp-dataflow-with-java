@@ -1,30 +1,30 @@
 package dataflowsamples.windowsamples;
 
+
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
-import org.apache.beam.sdk.transforms.windowing.FixedWindows;
 import org.apache.beam.sdk.transforms.windowing.IntervalWindow;
+import org.apache.beam.sdk.transforms.windowing.SlidingWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 
-public class FixedWindowSample {
+public class SlidingWindowExample {
 
     public static void main(String[] args) {
 
         // Create a pipeline
         Pipeline pipeline = Pipeline.create();
-        int FIXED_WINDOW_SIZE = 30;
+        int SLIDING_WINDOW_SIZE = 30;
+        int SLIDING_WINDOW_PERIOD = 10;
 
         // Create a PCollection of input data
         PCollection<String> inputData = pipeline
@@ -36,8 +36,7 @@ public class FixedWindowSample {
                         "17:00:21,Product1,40",
                         "17:00:30,Product1,10",
                         "17:00:41,Product1,10",
-                        "17:00:50,Product1,10",
-                        "17:00:50,Product2,40"
+                        "17:00:50,Product1,10"
                 ));
 
         // Parse the input data into TimestampedValue KVs
@@ -64,7 +63,8 @@ public class FixedWindowSample {
         }));
 
         PCollection<KV<String, Integer>> windowedProductSales = productSales.apply(
-                Window.into(FixedWindows.of(Duration.standardSeconds(FIXED_WINDOW_SIZE)))
+                Window.into(SlidingWindows.of(Duration.standardSeconds(SLIDING_WINDOW_SIZE))
+                        .every(Duration.standardSeconds(SLIDING_WINDOW_PERIOD)))
         );
 
         // Sum the sales of each product in the window
@@ -95,10 +95,9 @@ public class FixedWindowSample {
                     public void processElement(ProcessContext c) {
                         IntervalWindow window = c.element().getKey();
                         Iterable<KV<String, Integer>> productSales = c.element().getValue();
-                        DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss");
 
                         StringBuilder sb = new StringBuilder();
-                        sb.append("Window [Start: ").append(formatter.print(window.start())).append(" End: ").append(formatter.print(window.end())).append("]\n");
+                        sb.append("Window [Start: ").append(window.start()).append(" End: ").append(window.end()).append("]\n");
 
                         for (KV<String, Integer> sale : productSales) {
                             sb.append("\tProduct: ").append(sale.getKey()).append(", Total Sale: ").append(sale.getValue()).append("\n");
@@ -120,3 +119,4 @@ public class FixedWindowSample {
         pipeline.run();
     }
 }
+

@@ -10,6 +10,8 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -81,7 +83,8 @@ public class FixedWindowSampleBasic {
                 }
 
                 IntervalWindow intervalWindow = (IntervalWindow) window; // Cast the window to IntervalWindow
-                String windowInfo = ",Window information [Start: " + intervalWindow.start() + " End: " + intervalWindow.end()+"]";
+                DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss");
+                String windowInfo = ",Window information [Start: " + formatter.print(intervalWindow.start()) + " End: " + formatter.print(intervalWindow.end())+"]";
 
                 c.output(KV.of(productName, totalSales + " " + windowInfo));
             }
