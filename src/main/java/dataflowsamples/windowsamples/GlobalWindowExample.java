@@ -1,6 +1,5 @@
 package dataflowsamples.windowsamples;
 
-
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -10,23 +9,17 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Instant;
 
-import java.time.LocalDate;
-
 public class GlobalWindowExample {
     public static void main(String[] args) {
         // Create a pipeline
         Pipeline pipeline = Pipeline.create();
 
-        // Sample input data
+        // Sample shopping app data with date included: "date,time,user,action"
         PCollection<String> inputData = pipeline.apply(Create.of(
-                "17:00:00,User1,PageView",
-                "17:00:20,User2,PageView",
-                "17:01:20,User1,ButtonClick",
-                "17:03:00,User1,ButtonClick",
-                "17:10:00,User2,ButtonClick",
-                "17:12:00,User1,PageView",
-                "17:14:00,User1,PageView",
-                "17:15:00,User1,PageView"
+                "2023-10-04,09:00:00,User1,ViewLaptop",
+                "2023-10-04,09:03:00,User1,AddToCartLaptop",
+                "2023-10-04,09:10:00,User1,Checkout",
+                "2023-10-04,14:30:00,User1,ViewMobilePhone"
         ));
 
         // Parse input data to TimestampedValue
@@ -34,10 +27,10 @@ public class GlobalWindowExample {
             @ProcessElement
             public void processElement(ProcessContext c) {
                 String[] parts = c.element().split(",");
-                String time = parts[0];
-                String currentDate = LocalDate.now().toString(); // Get current date
-                Instant timestamp = Instant.parse(currentDate + "T" + time + ".000Z");
-                c.outputWithTimestamp(KV.of(parts[1], parts[2]), timestamp);
+                String date = parts[0];
+                String time = parts[1];
+                Instant timestamp = Instant.parse(date + "T" + time + ".000Z");
+                c.outputWithTimestamp(KV.of(parts[2], parts[3]), timestamp);
             }
         }));
 
@@ -62,4 +55,3 @@ public class GlobalWindowExample {
         pipeline.run().waitUntilFinish();
     }
 }
-
