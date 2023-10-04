@@ -11,6 +11,8 @@ import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -97,7 +99,8 @@ public class SlidingWindowExample {
                         Iterable<KV<String, Integer>> productSales = c.element().getValue();
 
                         StringBuilder sb = new StringBuilder();
-                        sb.append("Window [Start: ").append(window.start()).append(" End: ").append(window.end()).append("]\n");
+                        DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss");
+                        sb.append("Window [Start: ").append(formatter.print(window.start())).append(" End: ").append(formatter.print(window.end())).append("]\n");
 
                         for (KV<String, Integer> sale : productSales) {
                             sb.append("\tProduct: ").append(sale.getKey()).append(", Total Sale: ").append(sale.getValue()).append("\n");
