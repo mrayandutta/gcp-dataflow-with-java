@@ -13,32 +13,29 @@ import org.joda.time.Instant;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneOffset;
 
 public class FixedWindowSample {
 
     public static void main(String[] args) {
-
         // Create a pipeline
         Pipeline pipeline = Pipeline.create();
         int FIXED_WINDOW_SIZE = 30;
 
-        // Create a PCollection of input data
+        // Create a PCollection of input data with dates included
         PCollection<String> inputData = pipeline
                 .apply(Create.of(
-                        "17:00:00,Product1,10",
-                        "17:00:11,Product1,20",
-                        "17:00:11,Product2,10",
-                        "17:00:21,Product2,10",
-                        "17:00:21,Product1,40",
-                        "17:00:30,Product1,10",
-                        "17:00:41,Product1,10",
-                        "17:00:50,Product1,10",
-                        "17:00:50,Product2,40"
+                        "2023-10-01T17:00:00,Product1,10",
+                        "2023-10-01T17:10:00,Product1,10",
+                        "2023-10-01T17:10:00,Product2,40",
+                        "2023-10-01T17:20:00,Product2,10",
+                        "2023-10-01T17:30:00,Product1,10",
+                        "2023-10-01T17:30:00,Product2,40",
+                        "2023-10-01T17:40:00,Product2,100",
+                        "2023-10-01T17:40:00,Product1,100"
                 ));
+
 
         // Parse the input data into TimestampedValue KVs
         PCollection<KV<String, Integer>> productSales = inputData.apply(ParDo.of(new DoFn<String, KV<String, Integer>>() {
@@ -46,14 +43,8 @@ public class FixedWindowSample {
             public void processElement(ProcessContext c) {
                 String line = c.element();
                 String[] parts = line.split(",");
-                String[] timeParts = parts[0].split(":");
-                LocalTime time = LocalTime.of(
-                        Integer.parseInt(timeParts[0]),
-                        Integer.parseInt(timeParts[1]),
-                        Integer.parseInt(timeParts[2])
-                );
-                LocalDate date = LocalDate.now();
-                LocalDateTime dateTime = LocalDateTime.of(date, time);
+
+                LocalDateTime dateTime = LocalDateTime.parse(parts[0], java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"));
                 long epochTime = dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
 
                 c.outputWithTimestamp(
@@ -64,7 +55,7 @@ public class FixedWindowSample {
         }));
 
         PCollection<KV<String, Integer>> windowedProductSales = productSales.apply(
-                Window.into(FixedWindows.of(Duration.standardSeconds(FIXED_WINDOW_SIZE)))
+                Window.into(FixedWindows.of(Duration.standardMinutes(FIXED_WINDOW_SIZE)))
         );
 
         // Sum the sales of each product in the window
