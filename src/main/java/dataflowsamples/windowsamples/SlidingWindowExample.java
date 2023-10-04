@@ -1,6 +1,5 @@
 package dataflowsamples.windowsamples;
 
-
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
@@ -9,15 +8,11 @@ import org.apache.beam.sdk.transforms.windowing.SlidingWindows;
 import org.apache.beam.sdk.transforms.windowing.Window;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
+import org.joda.time.DateTime;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.joda.time.format.DateTimeFormat;
 import org.joda.time.format.DateTimeFormatter;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.ZoneOffset;
 
 public class SlidingWindowExample {
 
@@ -28,17 +23,17 @@ public class SlidingWindowExample {
         int SLIDING_WINDOW_SIZE = 30;
         int SLIDING_WINDOW_PERIOD = 10;
 
-        // Create a PCollection of input data
+        // Create a PCollection of input data with date
         PCollection<String> inputData = pipeline
                 .apply(Create.of(
-                        "17:00:00,Product1,10",
-                        "17:00:11,Product1,20",
-                        "17:00:11,Product2,10",
-                        "17:00:21,Product2,10",
-                        "17:00:21,Product1,40",
-                        "17:00:30,Product1,10",
-                        "17:00:41,Product1,10",
-                        "17:00:50,Product1,10"
+                        "2023-10-01T17:00:00,Product1,10",
+                        "2023-10-01T17:10:00,Product1,10",
+                        "2023-10-01T17:10:00,Product2,40",
+                        "2023-10-01T17:20:00,Product2,10",
+                        "2023-10-01T17:30:00,Product1,10",
+                        "2023-10-01T17:30:00,Product2,40",
+                        "2023-10-01T17:40:00,Product2,100",
+                        "2023-10-01T17:40:00,Product1,100"
                 ));
 
         // Parse the input data into TimestampedValue KVs
@@ -47,26 +42,21 @@ public class SlidingWindowExample {
             public void processElement(ProcessContext c) {
                 String line = c.element();
                 String[] parts = line.split(",");
-                String[] timeParts = parts[0].split(":");
-                LocalTime time = LocalTime.of(
-                        Integer.parseInt(timeParts[0]),
-                        Integer.parseInt(timeParts[1]),
-                        Integer.parseInt(timeParts[2])
-                );
-                LocalDate date = LocalDate.now();
-                LocalDateTime dateTime = LocalDateTime.of(date, time);
-                long epochTime = dateTime.toInstant(ZoneOffset.UTC).toEpochMilli();
+
+                DateTimeFormatter formatter = DateTimeFormat.forPattern("yyyy-MM-dd'T'HH:mm:ss");
+                DateTime dateTime = formatter.parseDateTime(parts[0]);
+                Instant timestamp = dateTime.toInstant();
 
                 c.outputWithTimestamp(
                         KV.of(parts[1], Integer.parseInt(parts[2])),
-                        Instant.ofEpochMilli(epochTime)
+                        timestamp
                 );
             }
         }));
 
         PCollection<KV<String, Integer>> windowedProductSales = productSales.apply(
-                Window.into(SlidingWindows.of(Duration.standardSeconds(SLIDING_WINDOW_SIZE))
-                        .every(Duration.standardSeconds(SLIDING_WINDOW_PERIOD)))
+                Window.into(SlidingWindows.of(Duration.standardMinutes(SLIDING_WINDOW_SIZE))
+                        .every(Duration.standardMinutes(SLIDING_WINDOW_PERIOD)))
         );
 
         // Sum the sales of each product in the window
@@ -122,4 +112,3 @@ public class SlidingWindowExample {
         pipeline.run();
     }
 }
-
