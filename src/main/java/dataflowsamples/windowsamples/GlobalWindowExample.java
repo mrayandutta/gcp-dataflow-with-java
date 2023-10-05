@@ -7,47 +7,53 @@ import org.apache.beam.sdk.transforms.GroupByKey;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
-import org.joda.time.Instant;
 
 public class GlobalWindowExample {
+
     public static void main(String[] args) {
         // Create a pipeline
         Pipeline pipeline = Pipeline.create();
 
-        // Sample shopping app data with date included: "date,time,user,action"
+        // Sample e-commerce purchase data: "date,time,user,action,purchaseAmount"
         PCollection<String> inputData = pipeline.apply(Create.of(
-                "2023-10-04,09:00:00,User1,ViewLaptop",
-                "2023-10-04,09:03:00,User1,AddToCartLaptop",
-                "2023-10-04,09:10:00,User1,Checkout",
-                "2023-10-04,14:30:00,User1,ViewMobilePhone"
+                "2023-10-04,09:00:00,User1,BuyLaptop,1200",
+                "2023-10-05,14:30:00,User1,BuyHeadphones,50",
+                "2023-10-04,11:15:00,User2,BuyMobilePhone,700"
         ));
 
         // Parse input data to TimestampedValue
-        PCollection<KV<String, String>> userActions = inputData.apply(ParDo.of(new DoFn<String, KV<String, String>>() {
+        PCollection<KV<String, Double>> userPurchases = inputData.apply(ParDo.of(new DoFn<String, KV<String, Double>>() {
             @ProcessElement
             public void processElement(ProcessContext c) {
                 String[] parts = c.element().split(",");
-                String date = parts[0];
-                String time = parts[1];
-                Instant timestamp = Instant.parse(date + "T" + time + ".000Z");
-                c.outputWithTimestamp(KV.of(parts[2], parts[3]), timestamp);
+                String user = parts[2];
+                Double purchaseAmount = Double.valueOf(parts[4]);
+                c.output(KV.of(user, purchaseAmount));
             }
         }));
 
-        // Group actions by user in a global window
-        PCollection<KV<String, Iterable<String>>> globalActions = userActions.apply(GroupByKey.create());
+        // Group purchases by user in a global window
+        PCollection<KV<String, Iterable<Double>>> globalPurchases = userPurchases.apply(GroupByKey.create());
 
-        // Print actions by user in global window
-        globalActions.apply(ParDo.of(new DoFn<KV<String, Iterable<String>>, Void>() {
+        // Calculate LTV for each user
+        PCollection<KV<String, Double>> userLTV = globalPurchases.apply(ParDo.of(new DoFn<KV<String, Iterable<Double>>, KV<String, Double>>() {
             @ProcessElement
             public void processElement(ProcessContext c) {
                 String user = c.element().getKey();
-                Iterable<String> actions = c.element().getValue();
-
-                System.out.println("Actions for " + user + " in Global Window:");
-                for (String action : actions) {
-                    System.out.println("\t- " + action);
+                Iterable<Double> purchases = c.element().getValue();
+                double totalSpend = 0.0;
+                for (Double purchase : purchases) {
+                    totalSpend += purchase;
                 }
+                c.output(KV.of(user, totalSpend));
+            }
+        }));
+
+        // Print LTV for each user
+        userLTV.apply(ParDo.of(new DoFn<KV<String, Double>, Void>() {
+            @ProcessElement
+            public void processElement(ProcessContext c) {
+                System.out.println("LTV for " + c.element().getKey() + ": $" + c.element().getValue());
             }
         }));
 
